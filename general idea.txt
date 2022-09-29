@@ -1,0 +1,4 @@
+a server with atomic queue
+every client can connect to the server and send messages
+when the queue get a message from client a, he sends it to everyone besides client a
+the server keeps in a file the last 100 msgs so when it will shutdown it'll be still possible to read old msgs
