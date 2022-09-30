@@ -10,6 +10,7 @@ import java.net.SocketTimeoutException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /*
     When Connecting to the server first msg should be the nickname of the user
@@ -19,12 +20,12 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 public class Server {
     private static final String exitWord = "exit";
-    int port;
-    boolean stop;
-    HashMap<Integer, Socket> connections;
-    HashMap<Integer, Thread> connectionThreads;
-    HashMap<Integer, String> connectionNames;
-    PriorityBlockingQueue<Msg> messages;
+    private final int port;
+    private boolean stop;
+    private final HashMap<Integer, Socket> connections;
+    private final HashMap<Integer, Thread> connectionThreads;
+    private final HashMap<Integer, String> connectionNames;
+    private final PriorityBlockingQueue<Msg> messages;
 
 
     public Server(int port){
@@ -37,7 +38,7 @@ public class Server {
 
     public void start(){
         stop = false;
-        new Thread(()->startServer()).start();
+        new Thread(this::startServer).start();
     }
 
     private void startServer(){
@@ -45,6 +46,7 @@ public class Server {
             ServerSocket server = new ServerSocket(port);
             server.setSoTimeout(1000);
             System.out.println("server is up");
+            new Thread(()->broadcastMsgs()).start();
             while(!stop){
                 try{
                     Socket client = server.accept();
@@ -55,10 +57,11 @@ public class Server {
                 }catch (SocketTimeoutException e){}
             }
             server.close();
+            System.out.println("Server is closed");
         }catch (Exception e){e.printStackTrace();}
     }
 
-    public void handleClient(Socket client){
+    private void handleClient(Socket client){
         try {
 
             String line = null;
@@ -66,40 +69,40 @@ public class Server {
             String name = in.readLine();
             connectionNames.put(client.getPort(), name);
 
-            while(!(line = in.readLine()).equals("exit") && !client.isClosed()){
+            while(!(line = in.readLine()).equals(exitWord) && !client.isClosed()){
                 messages.put(new Msg(line, name, new Date()));
             }
-
+            in.close();
             removeClient(client.getPort());
         }catch (Exception e){e.printStackTrace();}
     }
 
-    public void broadcastMsgs(){
+    private void broadcastMsgs(){
         try {
             Msg m;
             while (!stop) {
-                m = messages.take();
-                for(int id : connections.keySet()){
-                    if(connectionNames.get(id).equals(m.sender)) continue;
-                    Socket client = connections.get(id);
-                    PrintWriter out = new PrintWriter(client.getOutputStream(), true);
-                    out.println(m.toString());
+                m = null;
+                m = messages.poll(1, TimeUnit.SECONDS);
+                if(m != null) {
+                    for (int id : connections.keySet()) {
+                        if (connectionNames.get(id).equals(m.sender)) continue;
+                        Socket client = connections.get(id);
+                        PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+                        out.println(m.toString());
+                        out.close();
+                    }
                 }
-
             }
         }catch (Exception e){e.printStackTrace();}
+        System.out.println("broadcasting ended");
     }
 
-    public void removeClient(int clientID) {
+    private void removeClient(int clientID) {
         if(connections.containsKey(clientID)) {
             try {
                 connections.get(clientID).close();
-
-                connectionThreads.remove(clientID);
                 connections.remove(clientID);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            } catch (IOException e) {}
         }
     }
 
@@ -109,18 +112,4 @@ public class Server {
         }catch (Exception e){e.printStackTrace();}
         stop = true;
     }
-
-    public void broadcast(int senderID, String txt){
-        try {
-            for (int id : connections.keySet()) {
-                if (id == senderID) continue;
-                Socket client = connections.get(id);
-                PrintWriter out = new PrintWriter(client.getOutputStream(), true);
-                out.println(txt);
-            }
-
-        }catch (Exception e){e.printStackTrace();}
-    }
-
-
 }
