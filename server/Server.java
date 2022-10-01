@@ -69,7 +69,7 @@ public class Server {
             String name = in.readLine();
             connectionNames.put(client.getPort(), name);
             System.out.println("connection name: " + name);
-            while(!(line = in.readLine()).equals(exitWord) && !client.isClosed()){
+            while(!(line = in.readLine()).equals(exitWord) /*&& !client.isClosed()*/){
                 messages.put(new Msg(line, name, new Date()));
             }
             in.close();

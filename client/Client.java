@@ -51,7 +51,7 @@ public class Client {
             PrintWriter out = new PrintWriter(theServer.getOutputStream(), true);
             out.println(username);
             while(!(line = input.nextLine()).equals(exitWord)) {
-                out.println(input.nextLine());
+                out.println(line);
             }
             out.println(exitWord);
             out.close();

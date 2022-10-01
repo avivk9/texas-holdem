@@ -4,7 +4,7 @@ import java.security.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class Msg {
+public class Msg implements Comparable {
     String content;
     String sender;
     Date time;
@@ -18,4 +18,8 @@ public class Msg {
         return "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(time) + "] (" + sender + ") " + content;
     }
 
+    @Override
+    public int compareTo(Object o) {
+        return 0;
+    }
 }
