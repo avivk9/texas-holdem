@@ -48,7 +48,7 @@ public class Client {
         try {
             Scanner input = new Scanner(System.in);
             String line = null;
-            PrintWriter out = new PrintWriter(theServer.getOutputStream());
+            PrintWriter out = new PrintWriter(theServer.getOutputStream(), true);
             out.println(username);
             while(!(line = input.nextLine()).equals(exitWord)) {
                 out.println(input.nextLine());
