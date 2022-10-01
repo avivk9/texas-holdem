@@ -51,6 +51,7 @@ public class Server {
                 try{
                     Socket client = server.accept();
                     connections.put(client.getPort(), client);
+                    System.out.println("new connection: " + client.toString());
                     Thread t = new Thread(()->handleClient(client));
                     connectionThreads.put(client.getPort(), t);
                     t.start();
@@ -63,12 +64,11 @@ public class Server {
 
     private void handleClient(Socket client){
         try {
-
             String line = null;
             BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             String name = in.readLine();
             connectionNames.put(client.getPort(), name);
-
+            System.out.println("connection name: " + name);
             while(!(line = in.readLine()).equals(exitWord) && !client.isClosed()){
                 messages.put(new Msg(line, name, new Date()));
             }

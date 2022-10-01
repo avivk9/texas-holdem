@@ -36,9 +36,10 @@ public class Client {
         String line = null;
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(theServer.getInputStream()));
-            while(!stop){
-                System.out.println(in.readLine());
+            while(!stop && !((line = in.readLine()) == null)){
+                System.out.println(line);
             }
+            stop = true;
             in.close();
         } catch (IOException e) {e.printStackTrace();}
     }
@@ -48,6 +49,7 @@ public class Client {
             Scanner input = new Scanner(System.in);
             String line = null;
             PrintWriter out = new PrintWriter(theServer.getOutputStream());
+            out.println(username);
             while(!(line = input.nextLine()).equals(exitWord)) {
                 out.println(input.nextLine());
             }
