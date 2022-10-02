@@ -40,7 +40,7 @@ public class Client {
                 System.out.println(line);
             }
             in.close();
-        } catch (IOException e) {e.printStackTrace();}
+        } catch (IOException ignored) {}
     }
 
     public void sendMsgs(){
