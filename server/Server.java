@@ -19,6 +19,7 @@ public class Server {
     private boolean stop;
     private final ConcurrentHashMap<Integer, FullSocket> connections;
     private final ConcurrentHashMap<Integer, String> connectionNames;
+    private final ConcurrentHashMap<String, Integer> namesConnections;
     private final PriorityBlockingQueue<Msg> messages;
 
     private static class FullSocket{
@@ -51,6 +52,7 @@ public class Server {
         connections = new ConcurrentHashMap<>();
         messages = new PriorityBlockingQueue<>(1000);
         connectionNames = new ConcurrentHashMap<>();
+        namesConnections = new ConcurrentHashMap<>();
     }
 
     public void start(){
@@ -70,7 +72,6 @@ public class Server {
                 try {
                     Socket client = server.accept();
                     connections.put(client.getPort(), new FullSocket(client));
-                    System.out.println("new connection: " + client.toString());
                     new Thread(() -> handleClient(client)).start();
                 }catch (IOException ignored){}
             }
@@ -87,7 +88,9 @@ public class Server {
             BufferedReader in = connections.get(client.getPort()).in;
             String name = in.readLine(); // first message from client will always be his name
             connectionNames.put(client.getPort(), name);
-            System.out.println("connection name: " + name);
+            namesConnections.put(name, client.getPort());
+
+            broad(new Msg(name + " Just Landed In The Chat", "SERVER", new Date()));
 
             while(!(line = in.readLine()).equals(exitWord)){
                 messages.put(new Msg(line, name, new Date()));
@@ -98,18 +101,14 @@ public class Server {
         finally {removeClient(client.getPort());}
     }
 
-    private void broad(Msg msgToBroad) throws IOException {  // broadcast to all clients beside the client sent the message
-        Socket client; PrintWriter out;
+    private void broad(Msg msgToBroad){  // broadcast to all clients beside the client sent the message
+        PrintWriter out;
         for (int id : connections.keySet()) {
             if (!connectionNames.get(id).equals(msgToBroad.sender)) {
                 out = connections.get(id).out;
-                out.println(msgToBroad);
-                System.out.println("FROM BROAD: " + "msg: " + msgToBroad + ", sent to: " + connections.get(id).s);
             }
         }
-        System.out.println("broad finished for msg: " + msgToBroad);
     }
-
 
     private void keepBroadcasting(){
         try {
@@ -117,7 +116,6 @@ public class Server {
             while (!stop) {
                 m = messages.poll(1, TimeUnit.SECONDS);
                 if(m != null) {
-                    System.out.println("FROM KEEPBROAD: '" + m + "' sent to broadcasting");
                     broad(m); // broadcast to all clients beside the client sent the message}
                 }
             }
@@ -129,6 +127,8 @@ public class Server {
         if(connections.containsKey(clientID)) {
             connections.get(clientID).close();
             connections.remove(clientID);
+            broad(new Msg(connectionNames.get(clientID) + " Just Left The Chat :(", "SERVER", new Date()));
+            connectionNames.remove(clientID);
         }
     }
 

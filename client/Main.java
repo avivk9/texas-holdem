@@ -1,11 +1,17 @@
 package client;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args){
+
+    public static void main(String[] args) throws InterruptedException {
+        int PORT = 6969;
+        //String address = "192.168.1.185";
+        String address = "localhost";
         Scanner s = new Scanner(System.in);
-        Client c = new Client("avivk9", 6969, "127.0.0.1");
+        String username = s.nextLine();
+        Client c = new Client("avivk8", PORT, address);
         c.startClient();
     }
 }
