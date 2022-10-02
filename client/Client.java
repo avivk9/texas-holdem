@@ -39,7 +39,6 @@ public class Client {
             while(!stop && !((line = in.readLine()) == null)){
                 System.out.println(line);
             }
-            stop = true;
             in.close();
         } catch (IOException e) {e.printStackTrace();}
     }

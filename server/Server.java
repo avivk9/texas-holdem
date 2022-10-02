@@ -8,32 +8,49 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-/*
-    When Connecting to the server first msg should be the nickname of the user
-
- */
 
 
 public class Server {
     private static final String exitWord = "exit";
     private final int port;
     private boolean stop;
-    private final HashMap<Integer, Socket> connections;
-    private final HashMap<Integer, Thread> connectionThreads;
-    private final HashMap<Integer, String> connectionNames;
+    private final ConcurrentHashMap<Integer, FullSocket> connections;
+    private final ConcurrentHashMap<Integer, String> connectionNames;
     private final PriorityBlockingQueue<Msg> messages;
+
+    private static class FullSocket{
+        Socket s;
+        PrintWriter out;
+        BufferedReader in;
+        public FullSocket(Socket s) {
+            this.s = s;
+            try {
+                out = new PrintWriter(s.getOutputStream(), true);
+                in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        public void close(){
+            try {
+                out.close();
+                in.close();
+                s.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
 
     public Server(int port){
         this.port = port;
-        connections = new HashMap<>();
+        connections = new ConcurrentHashMap<>();
         messages = new PriorityBlockingQueue<>(1000);
-        connectionThreads = new HashMap<>();
-        connectionNames = new HashMap<>();
+        connectionNames = new ConcurrentHashMap<>();
     }
 
     public void start(){
@@ -46,17 +63,19 @@ public class Server {
             ServerSocket server = new ServerSocket(port);
             server.setSoTimeout(1000);
             System.out.println("server is up");
-            new Thread(()->broadcastMsgs()).start();
+
+            new Thread(this::keepBroadcasting).start();
+
             while(!stop){
-                try{
+                try {
                     Socket client = server.accept();
-                    connections.put(client.getPort(), client);
+                    connections.put(client.getPort(), new FullSocket(client));
                     System.out.println("new connection: " + client.toString());
-                    Thread t = new Thread(()->handleClient(client));
-                    connectionThreads.put(client.getPort(), t);
-                    t.start();
-                }catch (SocketTimeoutException e){}
+                    new Thread(() -> handleClient(client)).start();
+                }catch (IOException ignored){}
             }
+
+
             server.close();
             System.out.println("Server is closed");
         }catch (Exception e){e.printStackTrace();}
@@ -64,45 +83,52 @@ public class Server {
 
     private void handleClient(Socket client){
         try {
-            String line = null;
-            BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            String name = in.readLine();
+            String line;
+            BufferedReader in = connections.get(client.getPort()).in;
+            String name = in.readLine(); // first message from client will always be his name
             connectionNames.put(client.getPort(), name);
             System.out.println("connection name: " + name);
-            while(!(line = in.readLine()).equals(exitWord) /*&& !client.isClosed()*/){
+
+            while(!(line = in.readLine()).equals(exitWord)){
                 messages.put(new Msg(line, name, new Date()));
+                System.out.println("FROM HANDLE CLIENT: " + "new msg added: " + new Msg(line, name, new Date()));
             }
-            in.close();
-            removeClient(client.getPort());
-        }catch (Exception e){e.printStackTrace();}
+        }
+        catch (Exception ignored){} // socket closed
+        finally {removeClient(client.getPort());}
     }
 
-    private void broadcastMsgs(){
+    private void broad(Msg msgToBroad) throws IOException {  // broadcast to all clients beside the client sent the message
+        Socket client; PrintWriter out;
+        for (int id : connections.keySet()) {
+            if (!connectionNames.get(id).equals(msgToBroad.sender)) {
+                out = connections.get(id).out;
+                out.println(msgToBroad);
+                System.out.println("FROM BROAD: " + "msg: " + msgToBroad + ", sent to: " + connections.get(id).s);
+            }
+        }
+        System.out.println("broad finished for msg: " + msgToBroad);
+    }
+
+
+    private void keepBroadcasting(){
         try {
             Msg m;
             while (!stop) {
-                m = null;
                 m = messages.poll(1, TimeUnit.SECONDS);
                 if(m != null) {
-                    for (int id : connections.keySet()) {
-                        if (connectionNames.get(id).equals(m.sender)) continue;
-                        Socket client = connections.get(id);
-                        PrintWriter out = new PrintWriter(client.getOutputStream(), true);
-                        out.println(m.toString());
-                        out.close();
-                    }
+                    System.out.println("FROM KEEPBROAD: '" + m + "' sent to broadcasting");
+                    broad(m); // broadcast to all clients beside the client sent the message}
                 }
             }
         }catch (Exception e){e.printStackTrace();}
-        System.out.println("broadcasting ended");
+        finally {System.out.println("broadcasting ended");}
     }
 
     private void removeClient(int clientID) {
         if(connections.containsKey(clientID)) {
-            try {
-                connections.get(clientID).close();
-                connections.remove(clientID);
-            } catch (IOException e) {}
+            connections.get(clientID).close();
+            connections.remove(clientID);
         }
     }
 

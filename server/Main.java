@@ -7,7 +7,7 @@ public class Main {
         Server s = new Server(6969);
         s.start();
         Scanner input = new Scanner(System.in);
-        System.out.print("click enter for closing server");
+        System.out.println("click enter for closing server");
         input.nextLine();
         s.closeServer();
         System.out.println("\n\n\nfinished");
