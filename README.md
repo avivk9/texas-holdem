@@ -22,7 +22,7 @@ java client.Main
 ## Goals:
 + ### Make a fully function server with n-clients that can communicate with each other <a href="https://emoji.gg/emoji/7425-classic-check-mark"><img src="https://cdn3.emoji.gg/emojis/7425-classic-check-mark.png" width="20px" height="20px" alt="classic_check_mark"></a>
 + ### Username & Password system <a href="https://emoji.gg/emoji/2561-working"><img src="https://cdn3.emoji.gg/emojis/2561-working.gif" width="25px" height="25px" alt="Working"></a>
-+ ### Implement "Texas Hold'em" logic using Card class and else
++ ### Implement "Texas Hold'em" logic using Card class and else <a href="https://emoji.gg/emoji/2561-working"><img src="https://cdn3.emoji.gg/emojis/2561-working.gif" width="25px" height="25px" alt="Working"></a>
 + ### Implement "Room" logic for multi-games on one Server
 + ### Upload the server to a cloud
 + ### Make GUI using JavaFX
