@@ -10,9 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class NameSystem {
     public ConcurrentHashMap<String, ConnectedUser> activeConnections; // sessionID to users
+    private final ConcurrentHashMap<String, String> namesToPasswords; // name to password - from file
     private PrintWriter writeToData;
     private BufferedReader readFromData;
-    private final ConcurrentHashMap<String, String> namesToPasswords;
 
     public NameSystem(){
         activeConnections = new ConcurrentHashMap<>();
@@ -20,18 +20,19 @@ public class NameSystem {
         try {
             String dataFileLocation = "src\\server\\name_stock.csv";
             File data = new File(dataFileLocation);
-            writeToData = new PrintWriter(data);
+            writeToData = new PrintWriter(new FileWriter(data, true)); // this way new lines will append to the old ones
             readFromData = new BufferedReader(new FileReader(data));
+
+            // Fill hash map so data will be in RAM
             String line; String[] temp;
             while((line = readFromData.readLine()) != null){
                 temp = line.split(",");
                 if(temp.length > 1)
                     namesToPasswords.put(temp[0], temp[1]);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
@@ -51,28 +52,15 @@ public class NameSystem {
         return namesToPasswords.containsKey(username);
     }
 
-    public String addUser(String username, String password){
-        if(isUsernameExist(username)) return "ALREADY_EXIST";
-        else if(username.length() < 4) return "USERNAME_SHORT";
-        else{
-            createUser(username, password);
-            return "DONE";
-        }
-    }
-
-    public void disconnect(String username){
-        //TODO
-    }
-
-    public String removeUser(String username, String password){
-
-
-        return null;
+    public void disconnectFromActive(String sessionID){ // keeps account in all accounts data but remove from activeConnections
+        activeConnections.remove(sessionID);
     }
 
     public boolean checkPassword(String username, String password) {
-
-        return true;
+        if(namesToPasswords.containsKey(username)){ // loaded to RAM already
+            return password == namesToPasswords.get(username);
+        }
+        return false;
     }
 
     public void addActive(String clientSessionID, ConnectedUser connectedUser) {

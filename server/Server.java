@@ -63,11 +63,12 @@ public class Server {
 
     private void handleClient(Socket client){
         try {
-            String clientSession = ClientLogin.Login(allConnections.get(client.getPort()), ns);
+            // Connection
+            String clientSession = ClientLogin.Login(new FullSocket(client), ns);
             String line;
-            BufferedReader in = allConnections.get(client.getPort()).in;
-            String name = in.readLine(); // first message from client will always be his name
 
+            BufferedReader in = ns.activeConnections.get(clientSession).fs.in;
+            String name = in.readLine(); // first message from client will always be his name
 
             broad(new Msg(name + " Just Landed In The Chat", "SERVER", new Date()));
 
@@ -77,7 +78,9 @@ public class Server {
             }
         }
         catch (Exception ignored){} // socket closed
-        finally {removeClient(client.getPort());}
+        finally {
+            removeClient(client.getPort());
+        }
     }
 
     private void broad(Msg msgToBroad){  // broadcast to all clients beside the client sent the message

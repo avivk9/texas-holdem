@@ -2,6 +2,7 @@ package server.users;
 
 import server.FullSocket;
 import server.Server;
+import server.Utils.Generators;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -28,9 +29,7 @@ public class ClientLogin {
         while (!((EXIT_CODE = isPasswordCorrect(username, password, ns)) == 0)){
             if(EXIT_CODE == 1) fullSocket.out.println("FAIL - password not correct");
         }
-        byte[] array = new byte[7]; // length is bounded by 7
-        new Random().nextBytes(array);
-        String clientSessionID = new String(array, StandardCharsets.UTF_8);
+        String clientSessionID = Generators.generateRandom();
         ns.addActive(clientSessionID, new ConnectedUser(clientSessionID, username, fullSocket));
         return clientSessionID;
     }
