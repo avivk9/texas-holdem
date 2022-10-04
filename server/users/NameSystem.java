@@ -1,4 +1,4 @@
-package server;
+package server.users;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -9,11 +9,13 @@ import java.util.concurrent.ConcurrentHashMap;
 //TODO SPECIFY NAMES SYSTEM NEEDS
 
 public class NameSystem {
+    public ConcurrentHashMap<String, ConnectedUser> activeConnections; // sessionID to users
     private PrintWriter writeToData;
     private BufferedReader readFromData;
     private final ConcurrentHashMap<String, String> namesToPasswords;
 
     public NameSystem(){
+        activeConnections = new ConcurrentHashMap<>();
         namesToPasswords = new ConcurrentHashMap<>();
         try {
             String dataFileLocation = "src\\server\\name_stock.csv";
@@ -58,10 +60,22 @@ public class NameSystem {
         }
     }
 
+    public void disconnect(String username){
+        //TODO
+    }
+
     public String removeUser(String username, String password){
 
 
         return null;
     }
 
+    public boolean checkPassword(String username, String password) {
+
+        return true;
+    }
+
+    public void addActive(String clientSessionID, ConnectedUser connectedUser) {
+        activeConnections.put(clientSessionID, connectedUser);
+    }
 }
