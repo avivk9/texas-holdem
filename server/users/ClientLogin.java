@@ -3,6 +3,7 @@ package server.users;
 import server.FullSocket;
 import server.Server;
 import server.Utils.Generators;
+import server.Utils.Validators;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -14,7 +15,7 @@ public class ClientLogin {
     public static String Login(FullSocket fullSocket, NameSystem ns){
         int EXIT_CODE;
         String username = requestUsername(fullSocket);
-        while (!((EXIT_CODE = isUsernameLegal(username)) == 0)){
+        while (!((EXIT_CODE = Validators.isUsernameLegal(username)) == 0)){
             if(EXIT_CODE == 1) fullSocket.out.println("FAIL - username null exception");
             else if(EXIT_CODE == 2) fullSocket.out.println("FAIL - username too short");
 
@@ -26,23 +27,12 @@ public class ClientLogin {
         }
         // account created
         String password = requestPassword(fullSocket,username, ns);
-        while (!((EXIT_CODE = isPasswordCorrect(username, password, ns)) == 0)){
-            if(EXIT_CODE == 1) fullSocket.out.println("FAIL - password not correct");
+        while (!ns.checkPassword(username, password)){
+            fullSocket.out.println("FAIL - password not correct");
         }
         String clientSessionID = Generators.generateRandom();
         ns.addActive(clientSessionID, new ConnectedUser(clientSessionID, username, fullSocket));
         return clientSessionID;
-    }
-
-    private static int isPasswordCorrect(String username, String password, NameSystem ns) {
-        if(!ns.checkPassword(username, password)) return 1;
-        else return 0;
-    }
-
-    private static int isPasswordLeagal(String password) {
-        if(password.length() < 5) return 1;
-        // check if password is in common passwords file
-        else return 0;
     }
 
     private static String requestPassword(FullSocket fullSocket, String username, NameSystem ns) {
@@ -56,9 +46,14 @@ public class ClientLogin {
     }
 
     private static void createAccount(FullSocket fullSocket, String username, NameSystem ns) {
-        // TODO - IMPLEMENT
-        // TODO - MAYBE ADD SEARCHING IN THE MOST COMMON PASSWORDS
-        // DO NOT RETURN UNTIL ACCOUNT WAS CREATED
+        String password = requestPassword(fullSocket,username, ns);
+        while(!Validators.passwordValidate(password)){
+            fullSocket.out.println("FAIL - password not good");
+            password = requestPassword(fullSocket, username, ns);
+        }
+        ns.createUser(username, password);
+        // ACCOUNT CREATED
+        fullSocket.out.println("SUCCESS - account created");
     }
 
     private static String requestUsername(FullSocket fullSocket){
@@ -69,11 +64,5 @@ public class ClientLogin {
             e.printStackTrace();
         }
         return null;
-    }
-
-    private static int isUsernameLegal(String username){
-        if(username == null) return 1;
-        if(username.length() > 2) return 2;
-        return 0;  // Success
     }
 }

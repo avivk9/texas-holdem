@@ -11,18 +11,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NameSystem {
     public ConcurrentHashMap<String, ConnectedUser> activeConnections; // sessionID to users
     private final ConcurrentHashMap<String, String> namesToPasswords; // name to password - from file
-    private PrintWriter writeToData;
-    private BufferedReader readFromData;
+    private File data;
 
     public NameSystem(){
         activeConnections = new ConcurrentHashMap<>();
         namesToPasswords = new ConcurrentHashMap<>();
         try {
-            String dataFileLocation = "src\\server\\name_stock.csv";
-            File data = new File(dataFileLocation);
-            writeToData = new PrintWriter(new FileWriter(data, true)); // this way new lines will append to the old ones
-            readFromData = new BufferedReader(new FileReader(data));
-
+            String dataFileLocation = "server\\users\\name_stock.csv";
+            this.data = new File(dataFileLocation);
+            data.createNewFile();
+            BufferedReader readFromData = new BufferedReader(new FileReader(data));
             // Fill hash map so data will be in RAM
             String line; String[] temp;
             while((line = readFromData.readLine()) != null){
@@ -30,22 +28,21 @@ public class NameSystem {
                 if(temp.length > 1)
                     namesToPasswords.put(temp[0], temp[1]);
             }
-
+            readFromData.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-    protected void finalize(){
-        writeToData.close();
-        try {
-            readFromData.close();
-        } catch (IOException ignored){}
-    }
-
-    private void createUser(String username, String password){
+    public void createUser(String username, String password){
         namesToPasswords.put(username, password);
-        writeToData.println(username + "," + password);
+        PrintWriter writeToData = null; // this way new lines will append to the old ones
+        try {
+            writeToData = new PrintWriter(new FileWriter(data, true));
+            writeToData.println(username + "," + password + ",");
+            writeToData.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean isUsernameExist(String username){
@@ -56,7 +53,7 @@ public class NameSystem {
         activeConnections.remove(sessionID);
     }
 
-    public boolean checkPassword(String username, String password) {
+    public boolean checkPassword(String username, String password) { // checks if password is right
         if(namesToPasswords.containsKey(username)){ // loaded to RAM already
             return password == namesToPasswords.get(username);
         }

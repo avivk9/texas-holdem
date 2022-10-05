@@ -64,17 +64,17 @@ public class Server {
     private void handleClient(Socket client){
         try {
             // Connection
-            String clientSession = ClientLogin.Login(new FullSocket(client), ns);
-            String line;
-
-            BufferedReader in = ns.activeConnections.get(clientSession).fs.in;
-            String name = in.readLine(); // first message from client will always be his name
-
-            broad(new Msg(name + " Just Landed In The Chat", "SERVER", new Date()));
-
-            while(!(line = in.readLine()).equals(exitWord)){
-                messages.put(new Msg(line, name, new Date()));
-                System.out.println("FROM HANDLE CLIENT: " + "new msg added: " + new Msg(line, name, new Date()));
+            String clientSession = ClientLogin.Login(new FullSocket(client), ns); // should be added in each msg
+            String clientInput;
+            var outToClient = ns.activeConnections.get(clientSession).fs.out;
+            outToClient.println("CONNECTED - " + clientSession);
+            while(!(clientInput = ns.activeConnections.get(clientSession).fs.in.readLine()).contains(exitWord)){
+                if(!clientInput.contains(clientSession)){
+                    // TODO handle not getting clientSessionID in the msg
+                }
+                else{
+                    // TODO: handle different type of requests from client
+                }
             }
         }
         catch (Exception ignored){} // socket closed
@@ -106,7 +106,7 @@ public class Server {
         finally {System.out.println("broadcasting ended");}
     }
 
-    private void removeClient(int clientID) {
+    private void removeClient(int clientID) { // TODO: remove client properly
         if(allConnections.containsKey(clientID)) {
             allConnections.get(clientID).close();
             allConnections.remove(clientID);
