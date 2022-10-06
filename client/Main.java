@@ -10,8 +10,7 @@ public class Main {
         //String address = "192.168.1.185";
         String address = "localhost";
         Scanner s = new Scanner(System.in);
-        String username = s.nextLine();
-        Client c = new Client("avivk8", PORT, address);
+        Client c = new Client(PORT, address);
         c.startClient();
     }
 }

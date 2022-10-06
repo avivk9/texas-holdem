@@ -2,6 +2,7 @@ package server.Utils;
 
 public class Validators {
     public static boolean passwordValidate(String password){
+        if(password == null) return false;
         if(password.length()<3) return false;
         //TODO: ADD SEARCH IN COMMON PASSWORDS FILE
         return true;
