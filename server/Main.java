@@ -11,6 +11,6 @@ public class Main {
         System.out.println("click enter for closing server");
         input.nextLine();
         s.closeServer();
-        System.out.println("\n\n\nfinished");
+        System.out.println("\nfinished");
     }
 }

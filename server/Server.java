@@ -46,8 +46,7 @@ public class Server {
     private void handleClient(Socket client){
         Boolean connected = true;
         String sessionCookie = null;
-        String msg = null;
-        String type = null;
+        String msg;
         server.users.FullSocket fs = null;
         try {
             fs = new FullSocket(client);
@@ -68,6 +67,7 @@ public class Server {
                     else if(ret_val.equals("wrong_password")) fs.out.println("/print Failed to login, wrong password - try again");
                     else {
                         sessionCookie = ret_val;
+                        fs.out.println("/print Just logged in as " + msg.split(" ")[1]);
                         fs.out.println("/cookie " +  sessionCookie);
                     }
                 }
@@ -86,12 +86,16 @@ public class Server {
                 }
 
                 else if(msg.startsWith("/msg")){       //msg username text sessionCookie
-                    //TODO PRIVATE MESSAGING
+                    String ret_val = sendPrivateMsg(msg.split(" ")[1], msg.split(" ")[2], msg.split(" ")[3]);
+                    if(ret_val.equals("sender_not_found")) fs.out.println("/print broadcast failed, please try to disconnect and login again");
+                    else if(ret_val.equals("dest_not_found")) fs.out.println("/print the user you tried messaging not found");
+                    else if(ret_val.equals("ok")) fs.out.println("/print message delivered successfully!");
                 }
 
                 else if(msg.startsWith("/broad")){     //broad text sessionCookie
                     String ret_val = broad(msg.split(" ")[1], msg.split(" ")[2]);
-                    fs.out.println("/broad " + ret_val);
+                    if(ret_val.equals("not_found")) fs.out.println("/print broadcast failed, please try to disconnect and login again");
+                    else if(ret_val.equals("ok")) fs.out.println("/print Just broadcast: " + msg.split(" ")[1]);
                 }
             }
 
@@ -111,24 +115,24 @@ public class Server {
                 + ns.activeConnections.get(senderSessionCookie).username + ") " + txtToBroad;
         for (String client_cookie : ns.activeConnections.keySet()){
             if(!client_cookie.equals(senderSessionCookie)){
-                ns.activeConnections.get(client_cookie).sendMsg(msg);
+                ns.activeConnections.get(client_cookie).sendMsg("/m_print " + msg);
             }
         }
-        return "done";
+        return "ok";
     }
 
-    //TODO
-    private String sendPrivateMsg(String txtToMsg, String senderSessionCookie, String destinationUsername) throws Exception {
+    private String sendPrivateMsg(String destinationUsername, String txtToMsg, String senderSessionCookie) {
         if(!ns.activeConnections.containsKey(senderSessionCookie))
-            return "not_found";
-        for(String s_id : ns.activeConnections.keySet()){
-            if(ns.activeConnections.get(s_id).username.equals(destinationUsername)){
-                ns.activeConnections.get(s_id).fs.out.println
-                        ("[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] (" + ns.activeConnections.get(senderSessionCookie).username + ") PRIVATE MSG: " + txtToMsg);
-                return "done";
+            return "sender_not_found";
+        String msg = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] ("
+                + ns.activeConnections.get(senderSessionCookie).username + ") PRIVATE MESSAGE: " + txtToMsg;
+        for(String client_cookie : ns.activeConnections.keySet()){
+            if(ns.activeConnections.get(client_cookie).username.equals(destinationUsername)){
+                ns.activeConnections.get(client_cookie).fs.out.println("/m_print " + msg);
+                return "ok";
             }
         }
-        return "not_found";
+        return "dest_not_found";
     }
 
     public void closeServer(){
