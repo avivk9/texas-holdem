@@ -1,24 +1,19 @@
 package server;
 
-import server.users.ClientLogin;
+import server.users.FullSocket;
 import server.users.NameSystem;
-import java.io.IOException;
-import java.io.PrintWriter;
+
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 
 public class Server {
-    private static final String exitWord = "exit";
     private final int port;
     private boolean stop;
     public final NameSystem ns;
-
 
     public Server(int port){
         this.ns = new NameSystem();
@@ -42,80 +37,98 @@ public class Server {
                     new Thread(() -> handleClient(client)).start();
                 }catch (IOException ignored){}
             }
-
-
             server.close();
             System.out.println("Server is closed");
+
         }catch (Exception e){e.printStackTrace();}
     }
 
     private void handleClient(Socket client){
-        Boolean connected = false;
-        PrintWriter outToClient = null;
-        String clientSession = null;
+        Boolean connected = true;
+        String sessionCookie = null;
+        String msg = null;
+        String type = null;
+        server.users.FullSocket fs = null;
         try {
-            // Messaging protocol: SESSION_ID,MSG_TYPE(BROADCAST/PRIVATE/?),TEXT
-            // Connection
-            boolean flag = true;
-            String[] temp;
-            clientSession = ClientLogin.Login(new FullSocket(client), ns); // should be added in each msg
-            String clientInput;
-            outToClient = ns.activeConnections.get(clientSession).fs.out;
-            outToClient.println("CONNECTED:" + clientSession);
-            connected = true;
-            while(flag){
-                clientInput = ns.activeConnections.get(clientSession).fs.in.readLine();
-                if(clientInput.contains("/exit")){
-                    flag = false;
-                    continue;
+            fs = new FullSocket(client);
+            while (connected) {
+                msg = fs.in.readLine();
+
+                if (msg.startsWith("/exit")) {
+                    connected = false;
                 }
-                temp = clientInput.split(","); // temp[0] = session, temp[1] = type, temp[2] = plain text
-                if(temp.length != 3) throw new RuntimeException();
-                if(temp[0].equals(clientSession)) throw new RuntimeException();
-                // input is legal
-                if(temp[1].contains("broad")){
-                    broad(temp[2], clientSession);
+
+                else if (msg.startsWith("/ping")) {
+                    fs.out.println("/print pong!");
                 }
-                //msg_username
-                if(temp[1].contains("msg")){
-                    String destUsername = temp[1].substring(4);
-                    try {
-                        sendPrivateMsg(temp[2], clientSession, destUsername);
-                    }catch (Exception e){
-                        outToClient.println("username not found");
+
+                else if(msg.startsWith("/login")){     //login username password
+                    String ret_val = ns.loginToServer(msg.split(" ")[1], msg.split(" ")[2], fs);
+                    if(ret_val.equals("not_exist")) fs.out.println("/print Failed to login, such username don't exist");
+                    else if(ret_val.equals("wrong_password")) fs.out.println("/print Failed to login, wrong password - try again");
+                    else {
+                        sessionCookie = ret_val;
+                        fs.out.println("/cookie " +  sessionCookie);
                     }
                 }
+
+                else if(msg.startsWith("/signup")){    //signup username password
+                    int ret_val = ns.signupNewUser(msg.split(" ")[1], msg.split(" ")[2]);
+                    if(ret_val == 1) fs.out.println("/print Account: " + msg.split(" ")[1] + " created successfully!");
+                    else if(ret_val == 0) fs.out.println("/print Failed to sign up, this username is already in use");
+                    else if(ret_val == -1) fs.out.println("/print Failed to sign up, an error has been occurred");
+                }
+
+                else if(msg.equals("/disconnect")){
+                    fs.out.println("Disconnected from the server successfully!");
+                    ns.disconnectFromActive(sessionCookie);
+                    sessionCookie = null;
+                }
+
+                else if(msg.startsWith("/msg")){       //msg username text sessionCookie
+                    //TODO PRIVATE MESSAGING
+                }
+
+                else if(msg.startsWith("/broad")){     //broad text sessionCookie
+                    String ret_val = broad(msg.split(" ")[1], msg.split(" ")[2]);
+                    fs.out.println("/broad " + ret_val);
+                }
             }
+
+        }catch (Exception SocketClosed){
+            // close socket
         }
-        catch (Exception SocketClosed){
-            if(connected) ns.disconnectFromActive(clientSession);
-            else {
-                assert outToClient != null;
-                outToClient.close();
-            }
+        finally {
+            if(sessionCookie != null) ns.disconnectFromActive(sessionCookie);
+            if(fs != null) fs.close();
         }
     }
 
-    private void broad(String txtToBroad, String senderSessionID){  // broadcast to all clients beside the client sent the message
-        for (String s_id : ns.activeConnections.keySet()) {
-            if (!s_id.equals(senderSessionID)) {
-                //[time](username) txt
-                ns.activeConnections.get(s_id).fs.out.println
-                        ("[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] (" + ns.activeConnections.get(senderSessionID).username + ") " + txtToBroad);
+    private String broad(String txtToBroad, String senderSessionCookie){  // broadcast to all clients beside the client sent the message
+        if(!ns.activeConnections.containsKey(senderSessionCookie))
+            return "not_found";
+        String msg = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] ("
+                + ns.activeConnections.get(senderSessionCookie).username + ") " + txtToBroad;
+        for (String client_cookie : ns.activeConnections.keySet()){
+            if(!client_cookie.equals(senderSessionCookie)){
+                ns.activeConnections.get(client_cookie).sendMsg(msg);
             }
         }
+        return "done";
     }
 
-    private void sendPrivateMsg(String txtToMsg, String senderSessionID, String destinationUsername) throws Exception {
-
+    //TODO
+    private String sendPrivateMsg(String txtToMsg, String senderSessionCookie, String destinationUsername) throws Exception {
+        if(!ns.activeConnections.containsKey(senderSessionCookie))
+            return "not_found";
         for(String s_id : ns.activeConnections.keySet()){
             if(ns.activeConnections.get(s_id).username.equals(destinationUsername)){
                 ns.activeConnections.get(s_id).fs.out.println
-                        ("[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] (" + ns.activeConnections.get(senderSessionID).username + ") PRIVATE MSG: " + txtToMsg);
-                return;
+                        ("[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "] (" + ns.activeConnections.get(senderSessionCookie).username + ") PRIVATE MSG: " + txtToMsg);
+                return "done";
             }
         }
-        throw new Exception("FAIL:destination not found");
+        return "not_found";
     }
 
     public void closeServer(){

@@ -1,7 +1,5 @@
 package client;
 
-import java.io.IOException;
-import java.util.Scanner;
 
 public class Main {
 
@@ -9,7 +7,6 @@ public class Main {
         int PORT = 6969;
         //String address = "192.168.1.185";
         String address = "localhost";
-        Scanner s = new Scanner(System.in);
         Client c = new Client(PORT, address);
         c.startClient();
     }

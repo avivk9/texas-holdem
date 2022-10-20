@@ -1,19 +1,17 @@
 package server.users;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Scanner;
+import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
 //TODO SPECIFY NAMES SYSTEM NEEDS
 
 public class NameSystem {
     public ConcurrentHashMap<String, ConnectedUser> activeConnections; // sessionID to users
-    private final ConcurrentHashMap<String, String> namesToPasswords; // name to password - from file
+    private final ConcurrentHashMap<String, String> namesToPasswords; // username to password - from file
     private File data;
 
-    public NameSystem(){
+    public NameSystem(){ // load all nameToPasswords
         activeConnections = new ConcurrentHashMap<>();
         namesToPasswords = new ConcurrentHashMap<>();
         try {
@@ -33,7 +31,15 @@ public class NameSystem {
             e.printStackTrace();
         }
     }
-    public void createUser(String username, String password){
+
+    /*
+    * if user signed up correctly return 1
+    * if username already exist return 0
+    * if any exception happens return -1
+    * */
+    public int signupNewUser(String username, String password){
+
+        if(namesToPasswords.containsKey(username)) return 0;
         namesToPasswords.put(username, password);
         PrintWriter writeToData = null; // this way new lines will append to the old ones
         try {
@@ -41,26 +47,25 @@ public class NameSystem {
             writeToData.println(username + "," + password + ",");
             writeToData.close();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            return -1;
         }
+        return 1;
     }
-
-    public boolean isUsernameExist(String username){
-        return namesToPasswords.containsKey(username);
+    public String loginToServer(String username, String password, FullSocket fs){ // return a new session id
+        if(!namesToPasswords.containsKey(username))
+            return "not_exist";
+        if(!namesToPasswords.get(username).equals(password))
+            return "wrong_password";
+        String sessionCookie = server.Utils.Generators.generateRandom();
+        activeConnections.put(sessionCookie, new ConnectedUser(sessionCookie, username, fs));
+        return sessionCookie;
     }
-
-    public void disconnectFromActive(String sessionID){ // keeps account in all accounts data but remove from activeConnections
-        activeConnections.remove(sessionID);
-    }
-
-    public boolean checkPassword(String username, String password) { // checks if password is right
-        if(namesToPasswords.containsKey(username)){ // loaded to RAM already
-            return password == namesToPasswords.get(username);
+    public void disconnectFromActive(String sessionCookie){ // keeps account in all accounts data but remove from activeConnections
+        try {
+            activeConnections.remove(sessionCookie);
         }
-        return false;
+        catch (Exception ignored){}
     }
 
-    public void addActive(String clientSessionID, ConnectedUser connectedUser) {
-        activeConnections.put(clientSessionID, connectedUser);
-    }
 }

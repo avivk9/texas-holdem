@@ -1,4 +1,4 @@
-package server;
+package server.users;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,14 +10,12 @@ public class FullSocket {
     public Socket s;
     public PrintWriter out;
     public BufferedReader in;
-    public FullSocket(Socket s) {
+
+    public FullSocket(Socket s) throws IOException {
         this.s = s;
-        try {
-            out = new PrintWriter(s.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        out = new PrintWriter(s.getOutputStream(), true);
+        in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+
     }
     public void close(){
         try {
@@ -28,4 +26,5 @@ public class FullSocket {
             e.printStackTrace();
         }
     }
+
 }

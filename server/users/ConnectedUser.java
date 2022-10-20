@@ -1,15 +1,20 @@
 package server.users;
 
-import server.FullSocket;
-
 public class ConnectedUser {
-    public String sessionID;
+    public String status;
+    public String sessionCookie;
     public String username;
     public FullSocket fs;
-    public ConnectedUser(String sessionID, String username, FullSocket fs){
-        this.sessionID=sessionID;
-        this.username=username;
+
+    public ConnectedUser(String sessionCookie, String username, FullSocket fs) {
+        this.status = "available";
+        this.sessionCookie = sessionCookie;
+        this.username = username;
         this.fs = fs;
+    }
+
+    public void sendMsg(String text){
+        fs.out.println("/print " + text);
     }
 
 }

@@ -7,14 +7,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
     private static final String exitWord = "exit";
     private final int port;
     private final String address;
-    private String sessionID;
-    boolean stop;
+    private String sessionCookie;
+    AtomicBoolean connected;
     private Socket theServer;
 
     public Client(int port, String address) {
@@ -22,84 +25,104 @@ public class Client {
         this.address = address;
     }
     public void startClient(){
-        stop = false;
-        Scanner input = new Scanner(System.in);
+        connected = new AtomicBoolean(true);
         try {
+            sessionCookie = null;
             theServer = new Socket(address, port);
-            System.out.println("Welcome To Texas Hold'em Server!");
+            System.out.println("Welcome To Texas Hold'em Server\n For help please enter /help");
             BufferedReader inFromServer = new BufferedReader(new InputStreamReader(theServer.getInputStream()));
-            PrintWriter outToServer = new PrintWriter(theServer.getOutputStream());
-            Connect(outToServer, inFromServer);
-
-            outToServer.println("exit");
+            PrintWriter outToServer = new PrintWriter(theServer.getOutputStream(), true);
+            new Thread(()->mainPrintingLoop(inFromServer)).start();
+            mainInputLoop(outToServer);
             outToServer.close();
             inFromServer.close();
         } catch (Exception e){e.printStackTrace();}
     }
 
-    private void Connect(PrintWriter outToServer, BufferedReader inFromServer) throws IOException {
+    private void mainInputLoop(PrintWriter outToServer){
+        String location = "~";
+        Scanner readLine = new Scanner(System.in);
+        String input;
+        while(connected.get()){
+            System.out.print(location);
+            input = readLine.nextLine().trim();
 
-        Scanner s = new Scanner(System.in);
-        String username = null;
-        System.out.print("Please enter your username: ");
-        outToServer.println(s.nextLine());
-
-        String lineFromServer;
-        while ((lineFromServer=inFromServer.readLine()).contains("FAIL")){
-            System.out.println(lineFromServer + ", please try again");
-            System.out.print("Please enter your username: ");
-            outToServer.println(username = s.nextLine());
-        }
-        // Username Checked
-        lineFromServer=inFromServer.readLine();
-        if(lineFromServer.equals("ALERT:Creating new account")){
-            // send details for account creation
-            System.out.println("=CREATING NEW ACCOUNT=");
-            System.out.print("username: " + username + "\nplease enter your password: ");
-            outToServer.println(s.nextLine());
-            while (!(lineFromServer = inFromServer.readLine()).contains("SUCCESS")){
-                System.out.println(lineFromServer);
-                System.out.print("username: " + username + "\nplease enter your password: ");
-                outToServer.println(s.nextLine());
+            if(input.startsWith("/exit")){
+                connected = new AtomicBoolean(false);
             }
-            // account is created
+
+            else if(input.startsWith("/help")){
+                System.out.println("~Help Instructions~\n" +
+                        "/ping                          used to check if the server response well\n" +
+                        "/exit                          used for closing the connection with the server\n" +
+                        "/signup 'username' 'password'      create a new account and add it to the server db\n" +
+                        "/login 'username' 'password'       logs you into the server, make it possible for you\n" +
+                        "                                   to send messages to other online users\n" +
+                        "/broad 'message'                   send a message to ALL online users\n" +
+                        "/disconnect                        if you're logged in, you'll disconnect from your account\n" +
+                        "/cookie                            reveal your session cookie, don't bother to understand what's written :)");
+            }
+
+            else if(input.startsWith("/ping")){
+                outToServer.println("/ping");
+            }
+
+            else if(input.startsWith("/signup")){
+                if(input.contains(" ")){
+                    if(input.split(" ").length == 3)
+                        outToServer.println(input);
+                    else System.out.println("command hasn't wrote properly, please try again - or use /help for help");
+                }
+                else System.out.println("command hasn't wrote properly, please try again - or use /help for help");
+            }
+
+            else if(input.startsWith("/login")){
+                if(sessionCookie != null)
+                    System.out.println("already logged in, for login out please use /disconnect");
+                else if(input.contains(" ")){
+                    if(input.split(" ").length == 3)
+                        outToServer.println(input);
+                    else System.out.println("command hasn't wrote properly, please try again - or use /help for help");
+                }
+                else System.out.println("command hasn't wrote properly, please try again - or use /help for help");
+            }
+
+            else if(input.equals("/disconnect")){
+                outToServer.println("/disconnect");
+                sessionCookie = null;
+            }
+
+            else if(input.equals("/cookie")){
+                if(sessionCookie == null) System.out.println("You're not logged in, so there's no cookie for you :(");
+                else System.out.println(sessionCookie);
+            }
+
+
+
+            else{ // unknown command
+                System.out.println("unknown command entered, for help please type /help");
+            }
         }
-        System.out.print("username: " + username + "\nplease enter your password: ");
-        outToServer.println(s.nextLine());
-        while (!(lineFromServer = inFromServer.readLine()).contains("SUCCESS")){
-            System.out.println(lineFromServer);
-            System.out.print("username: " + username + "\nplease enter your password: ");
-            outToServer.println(s.nextLine());
-        }
-        sessionID = inFromServer.readLine().substring(10);
-        s.close();
+        outToServer.println("/exit");
     }
 
-    public void printMsgs(){
-        String line = null;
-        try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(theServer.getInputStream()));
-            while(!stop && !((line = in.readLine()) == null)){
-                System.out.println(line);
+    private void mainPrintingLoop(BufferedReader inFromServer){
+        String cmd = null;
+        while (connected.get()){
+            try {
+                cmd = inFromServer.readLine();
+            } catch (IOException e) {
+                connected = new AtomicBoolean(false);
+                continue;
             }
-            in.close();
-        } catch (IOException ignored) {}
-    }
-
-    public void sendMsgs(){
-        try {
-            Scanner input = new Scanner(System.in);
-            String line = null;
-            PrintWriter out = new PrintWriter(theServer.getOutputStream(), true);
-            //out.println(username);
-            while(!(line = input.nextLine()).equals(exitWord)) {
-                out.println(line);
+            if(cmd.startsWith("/print")){
+                System.out.println("[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + "](SERVER) " + cmd.substring(7));
+                System.out.print("~");
             }
-            out.println(exitWord);
-            out.close();
-            stop = true;
-        }catch (Exception e){e.printStackTrace();}
+            if(cmd.startsWith("/cookie")){
+                sessionCookie = cmd.substring(8);
+            }
+        }
     }
-
 
 }
