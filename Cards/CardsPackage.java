@@ -12,7 +12,7 @@ public class CardsPackage { // Package of 52 cards as should be in "Texas Hold'e
             cards.add(new Card(CardSign.CLUBS, i + 1));
             cards.add(new Card(CardSign.DIAMONDS, i + 1));
             cards.add(new Card(CardSign.HEARTS, i + 1));
-            cards.add(new Card(CardSign.DIAMONDS, i + 1));
+            cards.add(new Card(CardSign.SPADES, i + 1));
         }
         Collections.shuffle(cards);
         System.out.println(cards);
