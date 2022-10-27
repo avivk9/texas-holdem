@@ -49,15 +49,15 @@ public class Client {
             else if(input.startsWith("/help")){
                 System.out.println("""
                         ~Help Instructions~
-                        /ping                               used to check if the server response well
-                        /exit                               used for closing the connection with the server
-                        /signup 'username' 'password'       create a new account and add it to the server db
-                        /login 'username' 'password'        logs you into the server, make it possible for you
-                                                            to send messages to other online users
-                        /broad 'message'                    send a message to ALL online users
-                        /msg 'username' 'message'           send a private message ONLY to the username specified
-                        /disconnect                         if you're logged in, you'll disconnect from your account
-                        /cookie                             reveal your session cookie, don't bother to understand what's written :)""");
+                        /ping                                   used to check if the server response well
+                        /exit                                   used for closing the connection with the server
+                        /signup 'username' 'password' 'email'   create a new account and add it to the server db
+                        /login 'username' 'password'            logs you into the server, make it possible for you
+                                                                to send messages to other online users
+                        /broad 'message'                        send a message to ALL online users
+                        /msg 'username' 'message'               send a private message ONLY to the username specified
+                        /disconnect                             if you're logged in, you'll disconnect from your account
+                        /cookie                                 reveal your session cookie, don't bother to understand what's written :)""");
             }
 
             else if(input.startsWith("/ping")){
@@ -65,8 +65,10 @@ public class Client {
             }
 
             else if(input.startsWith("/signup")){
-                if(input.contains(" ")){
-                    if(input.split(" ").length == 3)
+                if(sessionCookie != null)
+                    System.out.println("for signup, please disconnect first, try using /disconnect");
+                else if(input.contains(" ")){
+                    if(input.split(" ").length == 4)
                         outToServer.println(input);
                     else System.out.println("command hasn't wrote properly, please try again - or use /help for help");
                 }

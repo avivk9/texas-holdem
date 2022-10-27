@@ -72,8 +72,8 @@ public class Server {
                     }
                 }
 
-                else if(msg.startsWith("/signup")){    //signup username password
-                    int ret_val = ns.signupNewUser(msg.split(" ")[1], msg.split(" ")[2]);
+                else if(msg.startsWith("/signup")){    //signup username password email
+                    int ret_val = ns.signupNewUser(msg.split(" ")[1], msg.split(" ")[2], msg.split(" ")[3]);
                     if(ret_val == 1) fs.out.println("/print Account: " + msg.split(" ")[1] + " created successfully!");
                     else if(ret_val == 0) fs.out.println("/print Failed to sign up, this username is already in use");
                     else if(ret_val == -1) fs.out.println("/print Failed to sign up, an error has been occurred");
